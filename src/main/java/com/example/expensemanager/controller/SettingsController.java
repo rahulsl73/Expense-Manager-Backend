@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.example.expensemanager.model.Settings;
 import com.example.expensemanager.service.SettingsService;
 
+
 @RestController
 @RequestMapping("/settings")
 public class SettingsController {

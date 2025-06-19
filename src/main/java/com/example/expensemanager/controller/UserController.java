@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.example.expensemanager.model.User;
 import com.example.expensemanager.service.UserService;
 
+
 @RestController
 @RequestMapping("/users")
 public class UserController {

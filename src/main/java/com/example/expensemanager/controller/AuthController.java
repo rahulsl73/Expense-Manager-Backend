@@ -11,8 +11,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.example.expensemanager.dto.AuthResponse;
 import com.example.expensemanager.dto.AuthRequest;
+import com.example.expensemanager.dto.AuthResponse;
 import com.example.expensemanager.dto.SignupRequest;
 import com.example.expensemanager.dto.UserDto;
 import com.example.expensemanager.model.User;
@@ -20,7 +20,6 @@ import com.example.expensemanager.security.JwtUtil;
 import com.example.expensemanager.service.UserService;
 
 import jakarta.validation.Valid;
-
 
 @RestController
 @RequestMapping("/auth")
