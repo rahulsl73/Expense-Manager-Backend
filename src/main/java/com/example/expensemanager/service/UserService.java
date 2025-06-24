@@ -11,6 +11,7 @@ import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.example.expensemanager.model.User;
 import com.example.expensemanager.repository.UserRepository;
@@ -32,7 +33,6 @@ public class UserService implements UserDetailsService {
     // Register a new user
      
     public User register(User u) {
-        // Hash the user's password
         u.setPassword(encoder.encode(u.getPassword()));
 
         byte[] keyBytes = new byte[32];
@@ -49,16 +49,10 @@ public class UserService implements UserDetailsService {
     }
 
     
-    // Update the user's monthly budget
     
-    public User updateBudget(Long uid, BigDecimal budget) {
-        User u = repo.findById(uid).orElseThrow();
-        u.setMonthlyBudget(budget);
-        return repo.save(u);
-    }
+  
 
     
-    // Load user details for authentication
     
     @Override
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
@@ -70,4 +64,18 @@ public class UserService implements UserDetailsService {
             .authorities(Collections.emptyList())
             .build();
     }
+
+    public Optional<User> findByUsername(String username) {
+        return repo.findByUsername(username);
+    }
+
+    @Transactional
+    public User updateProfile(Long uid, String newEmail, BigDecimal newBudget) {
+        User u = repo.findById(uid).orElseThrow(() ->
+            new IllegalArgumentException("User not found: " + uid));
+        u.setEmail(newEmail);
+        u.setMonthlyBudget(newBudget);
+        return repo.save(u);
+    }
+
 }

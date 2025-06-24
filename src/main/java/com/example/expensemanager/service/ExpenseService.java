@@ -3,15 +3,22 @@ package com.example.expensemanager.service;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 
 import com.example.expensemanager.dao.ExpenseDao;
+import com.example.expensemanager.dto.TimeSeriesPoint;
 import com.example.expensemanager.model.Expense;
 import com.example.expensemanager.model.User;
 
@@ -57,4 +64,61 @@ public class ExpenseService {
     public Long count(User u, LocalDate start, LocalDate end) {
         return dao.getMonthlyExpenseCount(u.getId());
     }
+
+    @Cacheable("SpendByCategoryDonut")
+    public Map<String, BigDecimal> getSpendByCategory(User user,
+                                                    LocalDate start,
+                                                    LocalDate end) {
+        return dao.sumByCategory(user, start, end);
+    }
+
+
+
+    public List<Expense> findTopByAmount(User user,
+                                     LocalDate start,
+                                     LocalDate end,
+                                     int n) {
+    return dao.findExpenses(
+            user, null, start, end,
+            PageRequest.of(0, n, Sort.by("amount").descending()))
+        .getContent();
+    }
+
+
+    public List<TimeSeriesPoint> getTimeSeries(User user,
+                                               LocalDate start,
+                                               LocalDate end,
+                                               String interval) {
+        Map<LocalDate, BigDecimal> raw;
+
+        switch (interval.toLowerCase()) {
+            case "day" -> {
+                raw = dao.sumByDay(user, start, end);
+            }
+            case "week" -> {
+                raw = dao.sumByWeek(user, start, end);
+            }
+            case "month" -> {
+                Map<LocalDate, BigDecimal> daily = dao.sumByDay(user, start, end);
+                raw = daily.entrySet().stream()
+                    .collect(Collectors.toMap(
+                        entry -> entry.getKey().withDayOfMonth(1),  
+                        Map.Entry::getValue,
+                        BigDecimal::add                               
+                    ));
+            }
+            default -> throw new IllegalArgumentException("interval must be day|week|month");
+        }
+
+        return raw.entrySet().stream()
+            .map(e -> new TimeSeriesPoint(e.getKey(), e.getValue()))
+            .sorted(Comparator.comparing(TimeSeriesPoint::getDate))
+            .toList();
+    }
+
+
+
+
+    
+
 }

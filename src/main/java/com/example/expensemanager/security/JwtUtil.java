@@ -29,7 +29,6 @@ public class JwtUtil {
         this.expirationMs = expirationMs;
     }
 
-    /** Generate a JWT token signed with the user's unique secret */
     public String generateToken(String username) {
         User user = repo.findByUsername(username)
             .orElseThrow(() -> new JwtException("User not found"));
@@ -45,9 +44,7 @@ public class JwtUtil {
             .compact();
     }
 
-    /** Validate the token and extract claims */
     private Claims parseToken(String token) {
-        // Extract username from token payload without signature (unsafe—but only for lookup)
         String subject = Jwts.parserBuilder()
             .build()
             .parseClaimsJwt(getUnsignedToken(token))
@@ -80,7 +77,6 @@ public class JwtUtil {
         }
     }
 
-    /** Helper: strip signature so parserBuilder can read payload */
     private String getUnsignedToken(String jwt) {
         int lastDot = jwt.lastIndexOf('.');
         if (lastDot < 0) throw new JwtException("Invalid token format");

@@ -88,4 +88,66 @@ public class ExpenseDaoImpl implements ExpenseDao {
         return getMonthlyTotal(userId)
             .divide(BigDecimal.valueOf(count), RoundingMode.HALF_UP);
     }
+
+    @Override
+    public Map<LocalDate, BigDecimal> sumByDay(User user, LocalDate start, LocalDate end) {
+        List<Object[]> raw = repo.sumByDay(user.getId(), start, end);
+        return raw.stream().collect(Collectors.toMap(
+            r -> (LocalDate)   r[0],
+            r -> (BigDecimal)  r[1]
+        ));
+    }
+
+   @Override
+    public Map<LocalDate, BigDecimal> sumByWeek(User user, LocalDate start, LocalDate end) {
+        List<Object[]> raw = repo.sumByWeek(user.getId(), start, end);
+        return raw.stream().collect(Collectors.toMap(
+            entry -> {
+                Object val = entry[0];
+                LocalDate weekStart;
+                if (val instanceof java.sql.Date) {
+                    weekStart = ((java.sql.Date) val).toLocalDate();
+                } else if (val instanceof java.time.Instant) {
+                    weekStart = ((java.time.Instant) val)
+                                    .atZone(java.time.ZoneId.systemDefault())
+                                    .toLocalDate();
+                } else if (val instanceof java.sql.Timestamp) {
+                    weekStart = ((java.sql.Timestamp) val)
+                                    .toLocalDateTime()
+                                    .toLocalDate();
+                } else {
+                    throw new IllegalStateException("Unexpected type for week_start: " + val.getClass());
+                }
+                // Normalize to Monday
+                return weekStart.with(java.time.DayOfWeek.MONDAY);
+            },
+            entry -> (BigDecimal) entry[1]
+        ));
+    }
+
+
+    @Override
+    public Map<LocalDate, BigDecimal> sumByMonthGrouped(User user, LocalDate start, LocalDate end) {
+        List<Object[]> raw = repo.sumByMonthGrouped(user.getId(), start, end);
+        return raw.stream().collect(Collectors.toMap(
+            entry -> {
+                Object val = entry[0];
+                LocalDate date;
+                if (val instanceof java.time.Instant) {
+                    date = ((java.time.Instant) val)
+                            .atZone(java.time.ZoneId.systemDefault())
+                            .toLocalDate();
+                } else if (val instanceof java.sql.Timestamp) {
+                    date = ((java.sql.Timestamp) val)
+                            .toLocalDateTime().toLocalDate();
+                } else {
+                    date = ((java.sql.Date) val).toLocalDate();
+                }
+                return date.withDayOfMonth(1);
+            },
+            entry -> (BigDecimal) entry[1]
+        ));
+    }
+
+
 }

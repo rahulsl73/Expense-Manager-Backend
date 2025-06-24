@@ -1,4 +1,3 @@
-// SignupRequest.java
 package com.example.expensemanager.dto;
 
 import jakarta.validation.constraints.Email;
@@ -9,9 +8,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-/**
- * Request payload for user registration.
- */
+
 @Data
 @NoArgsConstructor
 @AllArgsConstructor

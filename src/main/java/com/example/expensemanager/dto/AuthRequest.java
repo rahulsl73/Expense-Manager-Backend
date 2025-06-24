@@ -7,9 +7,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-/**
- * Request payload for user login.
- */
+
 @Data
 @NoArgsConstructor
 @AllArgsConstructor

@@ -3,11 +3,13 @@ package com.example.expensemanager.controller;
 import java.io.PrintWriter;
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Map;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -24,9 +26,9 @@ import org.springframework.web.server.ResponseStatusException;
 
 import com.example.expensemanager.dao.SummaryDao;
 import com.example.expensemanager.dto.ExpenseDto;
+import com.example.expensemanager.dto.TimeSeriesPoint;
 import com.example.expensemanager.model.Expense;
 import com.example.expensemanager.model.User;
-import com.example.expensemanager.service.BudgetService;
 import com.example.expensemanager.service.ExpenseService;
 import com.example.expensemanager.service.UserService;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -40,20 +42,17 @@ import jakarta.validation.Valid;
 public class ExpenseController {
     private final ExpenseService expSvc;
     private final UserService    userSvc;
-    private final BudgetService  budSvc;
     private final SummaryDao     summaryDao;
     private final KafkaTemplate<String,String> kafka;       
     private final ObjectMapper objectMapper;                
 
     public ExpenseController(
-        BudgetService budSvc,
         ExpenseService expSvc,
         UserService userSvc,
         SummaryDao summaryDao,
         KafkaTemplate<String,String> kafka,               
         ObjectMapper objectMapper                         
     ) {
-        this.budSvc = budSvc;
         this.expSvc = expSvc;
         this.userSvc = userSvc;
         this.summaryDao = summaryDao;
@@ -75,10 +74,6 @@ public class ExpenseController {
         // fire Kafka event
         String payload = objectMapper.writeValueAsString(ExpenseDto.fromEntity(saved));
         kafka.send("expenses", payload);
-
-        if (budSvc.isOverBudget(u, saved.getAmount())) {
-            // TODO: alert user
-        }
         return ExpenseDto.fromEntity(saved);
     }
 
@@ -91,6 +86,12 @@ public class ExpenseController {
         @RequestParam @DateTimeFormat(iso=DateTimeFormat.ISO.DATE) LocalDate end,
         Pageable pg
     ) {
+        if (start == null) {
+        start = LocalDate.of(1970, 1, 1);
+        }
+        if (end == null) {
+            end = LocalDate.now();
+        }
         User u = userSvc.findById(uid).orElseThrow();
         return expSvc.list(u, category, start, end, pg)
             .map(ExpenseDto::fromEntity);
@@ -142,39 +143,120 @@ public class ExpenseController {
         );
 
 
-        // publish summary to Kafka
         String summaryJson = objectMapper.writeValueAsString(summary);
         kafka.send("expense-summaries", summaryJson);
         return summary;
     }
 
-     @GetMapping("/export")
+
+
+    // controller for donut data
+    @GetMapping("/stats/category")
+    public Map<String, BigDecimal> getCategoryBreakdown(
+        @RequestHeader("User-Id") Long uid,
+        @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate start,
+        @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate end
+    ) {
+        User user = userSvc.findById(uid)
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+        return expSvc.getSpendByCategory(user, start, end);
+    }
+
+
+    // For Horizontal Bar Chart
+    @GetMapping("/stats/top")
+    public List<ExpenseDto> getTopExpenses(
+        @RequestHeader("User-Id") Long uid,
+        @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate start,
+        @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate end,
+        @RequestParam int n
+    ) {
+        User user = userSvc.findById(uid)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+        // ask service for top n
+        return expSvc.findTopByAmount(user, start, end, n)
+                     .stream()
+                     .map(ExpenseDto::fromEntity)
+                     .toList();
+    }
+
+
+    @GetMapping("/stats/timeseries")
+    public List<TimeSeriesPoint> getTimeSeries(
+        @RequestHeader("User-Id") Long uid,
+        @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate start,
+        @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate end,
+        @RequestParam String interval  // "day", "week", or "month"
+    ) {
+        User user = userSvc.findById(uid)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+        return expSvc.getTimeSeries(user, start, end, interval);
+    }
+
+
+
+    @GetMapping("/export")
     public void exportCsv(
         @RequestHeader("User-Id") Long uid,
+
+        // default to 1970-01-01 if the client omits the “start” param
+        @RequestParam(
+        name = "start",
+        defaultValue = "1970-01-01"
+        )
+        @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
+        LocalDate start,
+
+        // default to today if the client omits the “end” param
+        @RequestParam(
+        name = "end",
+        defaultValue = "#{T(java.time.LocalDate).now().toString()}"
+        )
+        @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
+        LocalDate end,
+
+        @RequestParam(
+        name = "category",
+        defaultValue = ""
+        )
+        String category,
+
         HttpServletResponse resp
     ) throws Exception {
+       
+
         resp.setContentType("text/csv");
-        resp.setHeader("Content-Disposition", "attachment; filename=expenses.csv");
-        PrintWriter pw = resp.getWriter();
-        pw.println("Title,Amount,Category,Date,Tags,Note");
-        LocalDate start = LocalDate.of(1970, 1, 1);
-        LocalDate end   = LocalDate.now();
-        expSvc.list(
-            userSvc.findById(uid).orElseThrow(),
-            null,
-            start,
-            end,
-            Pageable.unpaged()
-        )
-        .map(ExpenseDto::fromEntity)
-        .forEach(dto -> pw.printf(
+        resp.setHeader(
+        HttpHeaders.CONTENT_DISPOSITION,
+        "attachment; filename=expenses.csv"
+        );
+
+        try (PrintWriter pw = resp.getWriter()) {
+            pw.println("Title,Amount,Category,Date,Tags,Note");
+
+            expSvc.list(
+                userSvc.findById(uid)
+                    .orElseThrow(() -> 
+                        new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found")
+                    ),
+                category.isBlank() ? null : category,
+                start,
+                end,
+                Pageable.unpaged()
+            )
+            .map(ExpenseDto::fromEntity)
+            .forEach(dto -> pw.printf(
             "%s,%s,%s,%s,%s,%s%n",
             dto.getTitle(),
             dto.getAmount(),
             dto.getCategory(),
             dto.getDate(),
             String.join("|", dto.getTags()),
-            dto.getNote()
-        ));
+            dto.getNote() == null ? "" : dto.getNote().replace("\n"," ").replace(","," ")
+            ));
+        }
     }
+
+
+
 }

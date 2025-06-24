@@ -15,7 +15,6 @@ import com.example.expensemanager.model.User;
 
 public interface ExpenseRepository extends JpaRepository<Expense, Long> {
 
-    // Filter by user + category + date range
     Page<Expense> findByUserAndCategoryAndDateBetween(
         User user,
         String category,
@@ -24,7 +23,6 @@ public interface ExpenseRepository extends JpaRepository<Expense, Long> {
         Pageable pageable
     );
 
-    // Filter by user + date range (no category)
     Page<Expense> findByUserAndDateBetween(
         User user,
         LocalDate start,
@@ -63,4 +61,50 @@ public interface ExpenseRepository extends JpaRepository<Expense, Long> {
         @Param("start") LocalDate start,
         @Param("end")   LocalDate end
     );
+
+    @Query("""
+      SELECT e.date AS d, COALESCE(SUM(e.amount),0)
+      FROM Expense e
+      WHERE e.user.id = :uid AND e.date BETWEEN :start AND :end
+      GROUP BY e.date
+      ORDER BY e.date
+    """)
+    List<Object[]> sumByDay(
+      @Param("uid")   Long uid,
+      @Param("start") LocalDate start,
+      @Param("end")   LocalDate end
+    );
+
+  
+    @Query(value = """
+      SELECT DATE_TRUNC('week', e.date)::date AS week_start,
+            COALESCE(SUM(e.amount),0)
+      FROM expenses e
+      WHERE e.user_id = :uid
+        AND e.date BETWEEN :start AND :end
+      GROUP BY week_start
+      ORDER BY week_start
+      """, nativeQuery = true)
+    List<Object[]> sumByWeek(
+      @Param("uid")   Long uid,
+      @Param("start") LocalDate start,
+      @Param("end")   LocalDate end
+    );
+
+
+    @Query(value = """
+    SELECT DATE_TRUNC('month', e.date)::date AS month_start, 
+          COALESCE(SUM(e.amount), 0)
+    FROM expenses e
+    WHERE e.user_id = :uid
+      AND e.date BETWEEN :start AND :end
+    GROUP BY month_start
+    ORDER BY month_start
+    """, nativeQuery = true)
+    List<Object[]> sumByMonthGrouped(
+        @Param("uid") Long uid,
+        @Param("start") LocalDate start,
+        @Param("end")   LocalDate end
+    );
+
 }

@@ -6,13 +6,13 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-/**
- * Response payload after successful login.
- */
+
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
 public class AuthResponse {
     private String token;
+    private Long userId;
+    private String email;
 }

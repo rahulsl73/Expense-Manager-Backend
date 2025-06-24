@@ -18,7 +18,6 @@ public interface ExpenseDao {
     // Return Page<Expense> so controllers can page & sort
     Page<Expense> findExpenses(User user, String category, LocalDate from, LocalDate to, Pageable pg);
 
-    // Used by BudgetService
     BigDecimal sumAmount(Long userId, LocalDate start, LocalDate end);
 
     BigDecimal sumByMonth(User user, int year, int month);
@@ -27,4 +26,13 @@ public interface ExpenseDao {
     BigDecimal getMonthlyTotal(Long userId);
     Long    getMonthlyExpenseCount(Long userId);
     BigDecimal getMonthlyAverage(Long userId);
+
+
+
+
+    Map<LocalDate, BigDecimal> sumByDay(User user, LocalDate start, LocalDate end);
+
+    Map<LocalDate, BigDecimal> sumByWeek(User user, LocalDate start, LocalDate end);
+
+    Map<LocalDate, BigDecimal> sumByMonthGrouped(User user, LocalDate start, LocalDate end);
 }

@@ -1,6 +1,5 @@
 package com.example.expensemanager.controller;
 
-
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -24,54 +23,58 @@ import jakarta.validation.Valid;
 @RestController
 @RequestMapping("/auth")
 public class AuthController {
-    private final AuthenticationManager auth;
+    private final AuthenticationManager authManager;
+    private final JwtUtil jwtUtil;
     private final UserService userSvc;
-    private final JwtUtil jwt;
 
-    public AuthController(AuthenticationManager auth, JwtUtil jwt, UserService userSvc) {
-        this.auth = auth;
-        this.jwt = jwt;
-        this.userSvc = userSvc;
+    public AuthController(AuthenticationManager authManager,
+                          JwtUtil jwtUtil,
+                          UserService userSvc) {
+        this.authManager = authManager;
+        this.jwtUtil     = jwtUtil;
+        this.userSvc     = userSvc;
     }
 
-    // pass directly user with dto
     @PostMapping("/signup")
-    public ResponseEntity<UserDto> signup(
-            @Valid @RequestBody SignupRequest req) {
-
-        // map request → entity
+    public ResponseEntity<UserDto> signup(@Valid @RequestBody SignupRequest req) {
         User toCreate = new User();
         toCreate.setUsername(req.getUsername());
         toCreate.setEmail(req.getEmail());
         toCreate.setPassword(req.getPassword());
 
         User created = userSvc.register(toCreate);
-
-        // map entity → DTO (hiding password, secret)
         UserDto dto = UserDto.from(created);
+
         return ResponseEntity
-            .status(HttpStatus.CREATED)
-            .body(dto);
+                .status(HttpStatus.CREATED)
+                .body(dto);
     }
 
     @PostMapping("/login")
-    public ResponseEntity<AuthResponse> login(
-            @Valid @RequestBody AuthRequest req) {
-
+    public ResponseEntity<AuthResponse> login(@Valid @RequestBody AuthRequest req) {
         try {
-            auth.authenticate(
+            authManager.authenticate(
                 new UsernamePasswordAuthenticationToken(
-                    req.getUsername(), req.getPassword()
+                    req.getUsername(), 
+                    req.getPassword()
                 )
             );
         } catch (BadCredentialsException ex) {
-            return ResponseEntity
-                .status(HttpStatus.UNAUTHORIZED)
-                .build();
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
 
-        String token = jwt.generateToken(req.getUsername());
-        return ResponseEntity.ok(new AuthResponse(token));
+        User user = userSvc.findByUsername(req.getUsername())
+                          .orElseThrow(() -> 
+                              new RuntimeException("User lookup failed after authentication")
+                          );
+
+        String token = jwtUtil.generateToken(req.getUsername());
+
+        AuthResponse resp = new AuthResponse(
+            token,
+            user.getId(),
+            user.getEmail()
+        );
+        return ResponseEntity.ok(resp);
     }
- 
 }
