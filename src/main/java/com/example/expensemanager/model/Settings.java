@@ -1,4 +1,3 @@
-
 package com.example.expensemanager.model;
 
 import jakarta.persistence.Column;
@@ -9,20 +8,17 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import lombok.Data;
 
-enum Theme {LIGHT, DARK};
-
 @Data
 @Entity
 @Table(name ="settings")
-public class Settings{
+public class Settings {
     @Id
     private Long userId;
 
-    @Column(length=3, nullable=false)
+    @Column(length = 3, nullable = false)
     private String currencyCode;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable=false)
+    @Column(nullable = false)
     private Theme theme;
-
 }
