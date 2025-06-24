@@ -1,9 +1,7 @@
 package com.example.expensemanager.dao;
 
 import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.time.LocalDate;
-import java.time.temporal.TemporalAdjusters;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -53,12 +51,12 @@ public class ExpenseDaoImpl implements ExpenseDao {
         return repo.sumAmount(userId, start, end);
     }
 
-    @Override
-    public BigDecimal sumByMonth(User user, int year, int month) {
-        LocalDate first = LocalDate.of(year, month, 1);
-        LocalDate last  = first.with(TemporalAdjusters.lastDayOfMonth());
-        return repo.sumAmount(user.getId(), first, last);
-    }
+    // @Override
+    // public BigDecimal sumByMonth(User user, int year, int month) {
+    //     LocalDate first = LocalDate.of(year, month, 1);
+    //     LocalDate last  = first.with(TemporalAdjusters.lastDayOfMonth());
+    //     return repo.sumAmount(user.getId(), first, last);
+    // }
 
     @Override
     public Map<String, BigDecimal> sumByCategory(User user, LocalDate from, LocalDate to) {
@@ -69,11 +67,11 @@ public class ExpenseDaoImpl implements ExpenseDao {
         ));
     }
 
-    @Override
-    public BigDecimal getMonthlyTotal(Long userId) {
-        LocalDate now = LocalDate.now();
-        return repo.sumAmount(userId, now.withDayOfMonth(1), now);
-    }
+    // @Override
+    // public BigDecimal getMonthlyTotal(Long userId) {
+    //     LocalDate now = LocalDate.now();
+    //     return repo.sumAmount(userId, now.withDayOfMonth(1), now);
+    // }
 
     @Override
     public Long getMonthlyExpenseCount(Long userId) {
@@ -81,13 +79,13 @@ public class ExpenseDaoImpl implements ExpenseDao {
         return repo.countExpenses(userId, now.withDayOfMonth(1), now);
     }
 
-    @Override
-    public BigDecimal getMonthlyAverage(Long userId) {
-        Long count = getMonthlyExpenseCount(userId);
-        if (count == 0) return BigDecimal.ZERO;
-        return getMonthlyTotal(userId)
-            .divide(BigDecimal.valueOf(count), RoundingMode.HALF_UP);
-    }
+    // @Override
+    // public BigDecimal getMonthlyAverage(Long userId) {
+    //     Long count = getMonthlyExpenseCount(userId);
+    //     if (count == 0) return BigDecimal.ZERO;
+    //     return getMonthlyTotal(userId)
+    //         .divide(BigDecimal.valueOf(count), RoundingMode.HALF_UP);
+    // }
 
     @Override
     public Map<LocalDate, BigDecimal> sumByDay(User user, LocalDate start, LocalDate end) {
@@ -126,28 +124,28 @@ public class ExpenseDaoImpl implements ExpenseDao {
     }
 
 
-    @Override
-    public Map<LocalDate, BigDecimal> sumByMonthGrouped(User user, LocalDate start, LocalDate end) {
-        List<Object[]> raw = repo.sumByMonthGrouped(user.getId(), start, end);
-        return raw.stream().collect(Collectors.toMap(
-            entry -> {
-                Object val = entry[0];
-                LocalDate date;
-                if (val instanceof java.time.Instant) {
-                    date = ((java.time.Instant) val)
-                            .atZone(java.time.ZoneId.systemDefault())
-                            .toLocalDate();
-                } else if (val instanceof java.sql.Timestamp) {
-                    date = ((java.sql.Timestamp) val)
-                            .toLocalDateTime().toLocalDate();
-                } else {
-                    date = ((java.sql.Date) val).toLocalDate();
-                }
-                return date.withDayOfMonth(1);
-            },
-            entry -> (BigDecimal) entry[1]
-        ));
-    }
+    // @Override
+    // public Map<LocalDate, BigDecimal> sumByMonthGrouped(User user, LocalDate start, LocalDate end) {
+    //     List<Object[]> raw = repo.sumByMonthGrouped(user.getId(), start, end);
+    //     return raw.stream().collect(Collectors.toMap(
+    //         entry -> {
+    //             Object val = entry[0];
+    //             LocalDate date;
+    //             if (val instanceof java.time.Instant) {
+    //                 date = ((java.time.Instant) val)
+    //                         .atZone(java.time.ZoneId.systemDefault())
+    //                         .toLocalDate();
+    //             } else if (val instanceof java.sql.Timestamp) {
+    //                 date = ((java.sql.Timestamp) val)
+    //                         .toLocalDateTime().toLocalDate();
+    //             } else {
+    //                 date = ((java.sql.Date) val).toLocalDate();
+    //             }
+    //             return date.withDayOfMonth(1);
+    //         },
+    //         entry -> (BigDecimal) entry[1]
+    //     ));
+    // }
 
 
 }
