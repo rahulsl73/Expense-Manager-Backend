@@ -1,5 +1,9 @@
 package com.example.expensemanager.controller;
 
+import java.util.HashMap;
+import java.util.Map;
+
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -36,18 +40,32 @@ public class AuthController {
     }
 
     @PostMapping("/signup")
-    public ResponseEntity<UserDto> signup(@Valid @RequestBody SignupRequest req) {
+    public ResponseEntity<?> signup(@Valid @RequestBody SignupRequest req) {
         User toCreate = new User();
         toCreate.setUsername(req.getUsername());
         toCreate.setEmail(req.getEmail());
         toCreate.setPassword(req.getPassword());
 
-        User created = userSvc.register(toCreate);
-        UserDto dto = UserDto.from(created);
-
-        return ResponseEntity
-                .status(HttpStatus.CREATED)
-                .body(dto);
+        try {
+            User created = userSvc.register(toCreate);
+            UserDto dto = UserDto.from(created);
+            return ResponseEntity.status(HttpStatus.CREATED).body(dto);
+        } catch (DataIntegrityViolationException ex) {
+            String causeMsg = ex.getMostSpecificCause().getMessage();
+            Map<String, String> errors = new HashMap<>();
+            if (causeMsg.contains("email")) {
+                errors.put("email", "Email already exists");
+            } else if (causeMsg.contains("username")) {
+                errors.put("username", "Username already taken");
+            } else {
+                errors.put("error", "Registration failed due to data integrity violation");
+            }
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(errors);
+        } catch (Exception ex) {
+            Map<String, String> error = new HashMap<>();
+            error.put("error", "Unexpected error occurred");
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
+        }
     }
 
     @PostMapping("/login")

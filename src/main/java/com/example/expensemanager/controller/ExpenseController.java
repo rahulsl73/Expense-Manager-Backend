@@ -11,7 +11,6 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
-import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -43,21 +42,19 @@ public class ExpenseController {
     private final ExpenseService expSvc;
     private final UserService    userSvc;
     private final SummaryDao     summaryDao;
-    private final KafkaTemplate<String,String> kafka;       
-    private final ObjectMapper objectMapper;                
+         
 
     public ExpenseController(
         ExpenseService expSvc,
         UserService userSvc,
         SummaryDao summaryDao,
-        KafkaTemplate<String,String> kafka,               
+        
         ObjectMapper objectMapper                         
     ) {
         this.expSvc = expSvc;
         this.userSvc = userSvc;
         this.summaryDao = summaryDao;
-        this.kafka = kafka;
-        this.objectMapper = objectMapper;
+       
 
     }
 
@@ -71,9 +68,7 @@ public class ExpenseController {
         e.setUser(u);
         Expense saved = expSvc.create(e);
 
-        // fire Kafka event
-        String payload = objectMapper.writeValueAsString(ExpenseDto.fromEntity(saved));
-        kafka.send("expenses", payload);
+        
         return ExpenseDto.fromEntity(saved);
     }
 
@@ -143,8 +138,7 @@ public class ExpenseController {
         );
 
 
-        String summaryJson = objectMapper.writeValueAsString(summary);
-        kafka.send("expense-summaries", summaryJson);
+        
         return summary;
     }
 
