@@ -1,4 +1,4 @@
-package com.example.expensemanager.dao;
+package com.example.expensemanager.Impl;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -10,6 +10,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Repository;
 
+import com.example.expensemanager.dao.ExpenseDao;
 import com.example.expensemanager.model.Expense;
 import com.example.expensemanager.model.User;
 import com.example.expensemanager.repository.ExpenseRepository;

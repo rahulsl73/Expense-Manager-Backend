@@ -1,4 +1,4 @@
-package com.example.expensemanager.dao;
+package com.example.expensemanager.Impl;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -7,6 +7,7 @@ import java.time.LocalDate;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.example.expensemanager.dao.SummaryDao;
 import com.example.expensemanager.repository.ExpenseRepository;
 
 @Repository         
