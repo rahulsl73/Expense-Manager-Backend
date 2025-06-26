@@ -167,7 +167,6 @@ public class ExpenseController {
     ) {
         User user = userSvc.findById(uid)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
-        // ask service for top n
         return expSvc.findTopByAmount(user, start, end, n)
                      .stream()
                      .map(ExpenseDto::fromEntity)
@@ -193,7 +192,6 @@ public class ExpenseController {
     public void exportCsv(
         @RequestHeader("User-Id") Long uid,
 
-        // default to 1970-01-01 if the client omits the “start” param
         @RequestParam(
         name = "start",
         defaultValue = "1970-01-01"
@@ -201,7 +199,6 @@ public class ExpenseController {
         @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
         LocalDate start,
 
-        // default to today if the client omits the “end” param
         @RequestParam(
         name = "end",
         defaultValue = "#{T(java.time.LocalDate).now().toString()}"

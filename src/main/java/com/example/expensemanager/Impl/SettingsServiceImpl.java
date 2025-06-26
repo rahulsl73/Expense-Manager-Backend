@@ -1,4 +1,4 @@
-package com.example.expensemanager.service;
+package com.example.expensemanager.Impl;
 
 import java.util.Optional;
 
@@ -7,6 +7,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.example.expensemanager.model.Settings;
 import com.example.expensemanager.repository.SettingsRepository;
+import com.example.expensemanager.service.SettingsService;
 
 @Service
 public class SettingsServiceImpl implements SettingsService {

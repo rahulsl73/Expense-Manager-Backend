@@ -1,4 +1,4 @@
-package com.example.expensemanager.service;
+package com.example.expensemanager.Impl;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -20,6 +20,7 @@ import com.example.expensemanager.dao.ExpenseDao;
 import com.example.expensemanager.dto.TimeSeriesPoint;
 import com.example.expensemanager.model.Expense;
 import com.example.expensemanager.model.User;
+import com.example.expensemanager.service.ExpenseService;
 
 @Service
 public class ExpenseServiceImpl implements ExpenseService {

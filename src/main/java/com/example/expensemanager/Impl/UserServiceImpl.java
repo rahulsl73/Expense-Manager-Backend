@@ -1,4 +1,4 @@
-package com.example.expensemanager.service;
+package com.example.expensemanager.Impl;
 
 import java.math.BigDecimal;
 import java.security.SecureRandom;
@@ -14,6 +14,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.example.expensemanager.model.User;
 import com.example.expensemanager.repository.UserRepository;
+import com.example.expensemanager.service.UserService;
 
 @Service
 public class UserServiceImpl implements UserService {

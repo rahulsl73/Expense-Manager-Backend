@@ -50,7 +50,6 @@ public interface ExpenseRepository extends JpaRepository<Expense, Long> {
         @Param("end")   LocalDate end
     );
 
-    // Category-wise sums for breakdown/charting
     @Query("SELECT e.category, COALESCE(SUM(e.amount), 0) " +
            "FROM Expense e " +
            "WHERE e.user.id = :uid " +
