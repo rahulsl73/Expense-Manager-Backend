@@ -18,7 +18,6 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -40,7 +39,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 
 @RestController
-@RequestMapping(Constants.EXPENSE_BASE)
+@RequestMapping("/user/{userId}/expenses")
 public class ExpenseController {
     private final ExpenseService expSvc;
     private final UserService    userSvc;
@@ -62,27 +61,26 @@ public class ExpenseController {
 
     @PostMapping
     public ExpenseDto create(
-        @RequestHeader(Constants.HEADER_USER_ID) Long uid,
+        @PathVariable Long userId,
         @Valid @RequestBody ExpenseDto dto
     ) throws JsonProcessingException {
-        User u = userSvc.findByIdOrThrow(uid);
+        User u = userSvc.findByIdOrThrow(userId);
         Expense e = dto.toEntity();
         e.setUser(u);
         Expense saved = expSvc.create(e);
-
         return ExpenseDto.fromEntity(saved);
     }
 
 
     @GetMapping
     public Page<ExpenseDto> list(
-        @RequestHeader(Constants.HEADER_USER_ID) Long uid,
+        @PathVariable Long userId,
         @RequestParam(required=false) String category,
         @RequestParam(required=false) @DateTimeFormat(iso=DateTimeFormat.ISO.DATE) LocalDate start,
         @RequestParam(required=false) @DateTimeFormat(iso=DateTimeFormat.ISO.DATE) LocalDate end,
         Pageable pg
     ) {
-        User u = userSvc.findByIdOrThrow(uid);
+        User u = userSvc.findByIdOrThrow(userId);
         return expSvc.list(u, category, start, end, pg)
             .map(ExpenseDto::fromEntity);
     }
@@ -97,10 +95,10 @@ public class ExpenseController {
     
     @PutMapping(Constants.CONVERT)
     public UserDto convertAllExpenses(
-        @RequestHeader(Constants.HEADER_USER_ID) Long uid,
+        @PathVariable Long userId,
         @RequestBody ConvertPayload payload
     ) {
-        User u = userSvc.findByIdOrThrow(uid);
+        User u = userSvc.findByIdOrThrow(userId);
 
         BigDecimal rate = rateSvc.getRate(payload.fromCurrency, payload.toCurrency);
 
@@ -114,7 +112,7 @@ public class ExpenseController {
         });
 
         BigDecimal newBudget = u.getMonthlyBudget().multiply(rate);
-        User updatedUser = userSvc.updateProfile(uid, u.getEmail(), newBudget);
+        User updatedUser = userSvc.updateProfile(userId, u.getEmail(), newBudget);
 
         return UserDto.from(updatedUser);
     }
@@ -155,13 +153,14 @@ public class ExpenseController {
 
     @GetMapping(Constants.STATS_SUMMARY)
     public Map<String,Object> getSummary(
-        @RequestHeader(Constants.HEADER_USER_ID) Long uid,
+        // @RequestHeader(Constants.HEADER_USER_ID) Long uid,
+        @PathVariable Long userId,
         @RequestParam @DateTimeFormat(iso=DateTimeFormat.ISO.DATE) LocalDate start,
         @RequestParam @DateTimeFormat(iso=DateTimeFormat.ISO.DATE) LocalDate end
     ) throws JsonProcessingException{
-        BigDecimal total = summaryDao.getTotalSpent(uid, start, end);
-        Long count      = summaryDao.getExpenseCount(uid, start, end);
-        BigDecimal avg  = summaryDao.getAverageSpent(uid, start, end);
+        BigDecimal total = summaryDao.getTotalSpent(userId, start, end);
+        Long count      = summaryDao.getExpenseCount(userId, start, end);
+        BigDecimal avg  = summaryDao.getAverageSpent(userId, start, end);
 
         Map<String,Object> summary = Map.of(
             "totalSpent",   total,
@@ -177,11 +176,11 @@ public class ExpenseController {
     // controller for donut data
     @GetMapping(Constants.STATS_CATEGORY)
     public Map<String, BigDecimal> getCategoryBreakdown(
-        @RequestHeader(Constants.HEADER_USER_ID) Long uid,
+        @PathVariable Long userId,
         @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate start,
         @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate end
     ) {
-        User user = userSvc.findByIdOrThrow(uid);
+        User user = userSvc.findByIdOrThrow(userId);
     
         return expSvc.getSpendByCategory(user, start, end);
     }
@@ -190,12 +189,12 @@ public class ExpenseController {
     // For Horizontal Bar Chart
     @GetMapping(Constants.STATS_TOP)
     public List<ExpenseDto> getTopExpenses(
-        @RequestHeader(Constants.HEADER_USER_ID) Long uid,
+        @PathVariable Long userId,
         @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate start,
         @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate end,
         @RequestParam int n
     ) {
-        User user = userSvc.findByIdOrThrow(uid);
+        User user = userSvc.findByIdOrThrow(userId);
             
         return expSvc.findTopByAmount(user, start, end, n)
                      .stream()
@@ -207,12 +206,12 @@ public class ExpenseController {
     // for line graph
     @GetMapping(Constants.STATS_TIMESERIES)
     public List<TimeSeriesPoint> getTimeSeries(
-        @RequestHeader(Constants.HEADER_USER_ID) Long uid,
+        @PathVariable Long userId,
         @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate start,
         @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate end,
         @RequestParam String interval  // "day", "week", or "month"
     ) {
-        User user = userSvc.findByIdOrThrow(uid);
+        User user = userSvc.findByIdOrThrow(userId);
 
         return expSvc.getTimeSeries(user, start, end, interval);
     }
@@ -221,8 +220,7 @@ public class ExpenseController {
 
     @GetMapping(Constants.EXPORT)
     public void exportCsv(
-        @RequestHeader(Constants.HEADER_USER_ID) Long uid,
-
+        @PathVariable Long userId,
         @RequestParam(
         name = "start",
         defaultValue = "1970-01-01"
@@ -257,7 +255,7 @@ public class ExpenseController {
             pw.println("Title,Amount,Category,Date,Tags,Note");
 
             expSvc.list(
-                userSvc.findByIdOrThrow(uid),
+                userSvc.findByIdOrThrow(userId),
                 category.isBlank() ? null : category,
                 start,
                 end,

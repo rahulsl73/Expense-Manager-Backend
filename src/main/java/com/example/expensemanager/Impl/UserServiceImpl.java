@@ -1,9 +1,7 @@
 package com.example.expensemanager.Impl;
 
 import java.math.BigDecimal;
-import java.security.SecureRandom;
 import java.util.Collections;
-import java.util.HexFormat;
 import java.util.Optional;
 
 import org.springframework.dao.DataIntegrityViolationException;
@@ -24,8 +22,7 @@ import com.example.expensemanager.service.UserService;
 public class UserServiceImpl implements UserService {
     private final UserRepository repo;
     private final PasswordEncoder encoder;
-    private static final SecureRandom SECURE_RANDOM = new SecureRandom();
-    private static final HexFormat HEX_FORMAT = HexFormat.of();
+    
 
     public UserServiceImpl(UserRepository repo, PasswordEncoder encoder) {
         this.repo = repo;
@@ -37,9 +34,7 @@ public class UserServiceImpl implements UserService {
     public User register(User u) {
         try{
             u.setPassword(encoder.encode(u.getPassword()));
-            // byte[] keyBytes = new byte[32];
-            // SECURE_RANDOM.nextBytes(keyBytes);
-            // u.setJwtSecret(HEX_FORMAT.formatHex(keyBytes));
+            
             return repo.save(u);
         }catch(DataIntegrityViolationException ex){
             String msg = ex.getMostSpecificCause().getMessage().toLowerCase();
