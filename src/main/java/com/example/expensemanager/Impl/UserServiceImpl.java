@@ -6,12 +6,16 @@ import java.util.Collections;
 import java.util.HexFormat;
 import java.util.Optional;
 
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.example.expensemanager.exception.DuplicateEmailException;
+import com.example.expensemanager.exception.DuplicateUsernameException;
+import com.example.expensemanager.exception.EntityNotFoundException;
 import com.example.expensemanager.model.User;
 import com.example.expensemanager.repository.UserRepository;
 import com.example.expensemanager.service.UserService;
@@ -31,17 +35,33 @@ public class UserServiceImpl implements UserService {
     @Override
     @Transactional
     public User register(User u) {
-        u.setPassword(encoder.encode(u.getPassword()));
-        byte[] keyBytes = new byte[32];
-        SECURE_RANDOM.nextBytes(keyBytes);
-        u.setJwtSecret(HEX_FORMAT.formatHex(keyBytes));
-        return repo.save(u);
+        try{
+            u.setPassword(encoder.encode(u.getPassword()));
+            byte[] keyBytes = new byte[32];
+            SECURE_RANDOM.nextBytes(keyBytes);
+            u.setJwtSecret(HEX_FORMAT.formatHex(keyBytes));
+            return repo.save(u);
+        }catch(DataIntegrityViolationException ex){
+            String msg = ex.getMostSpecificCause().getMessage().toLowerCase();
+            if (msg.contains("email")) {
+                throw new DuplicateEmailException(u.getEmail());
+            } else if (msg.contains("username")) {
+                throw new DuplicateUsernameException(u.getUsername());
+            } else {
+                throw ex;  
+            }
+
+        }
+        
     }
+
+    
 
     @Override
     @Transactional(readOnly = true)
-    public Optional<User> findById(Long id) {
-        return repo.findById(id);
+    public User  findByIdOrThrow(Long id) {
+        return repo.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("User not found with id " + id));
     }
 
     @Override

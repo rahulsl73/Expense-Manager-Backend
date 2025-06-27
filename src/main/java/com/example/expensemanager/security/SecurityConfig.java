@@ -51,8 +51,5 @@ public class SecurityConfig {
     @Bean
     public JwtFilter jwtFilter(JwtUtil jwtUtil, UserDetailsService uds) {
         return new JwtFilter(jwtUtil, uds);
-    }
-
-    
-    
+    }    
 }

@@ -6,6 +6,7 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 
+
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -23,74 +24,102 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 
+import com.example.expensemanager.constant.Constants;
 import com.example.expensemanager.dao.SummaryDao;
 import com.example.expensemanager.dto.ExpenseDto;
 import com.example.expensemanager.dto.TimeSeriesPoint;
+import com.example.expensemanager.dto.UserDto;
 import com.example.expensemanager.model.Expense;
 import com.example.expensemanager.model.User;
+import com.example.expensemanager.service.ExchangeRateService;
 import com.example.expensemanager.service.ExpenseService;
 import com.example.expensemanager.service.UserService;
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 
 @RestController
-@RequestMapping("/expenses")
+@RequestMapping(Constants.EXPENSE_BASE)
 public class ExpenseController {
     private final ExpenseService expSvc;
     private final UserService    userSvc;
     private final SummaryDao     summaryDao;
-         
+    private final ExchangeRateService rateSvc;  
 
     public ExpenseController(
         ExpenseService expSvc,
         UserService userSvc,
         SummaryDao summaryDao,
-        
-        ObjectMapper objectMapper                         
+        ExchangeRateService rateSvc
     ) {
         this.expSvc = expSvc;
         this.userSvc = userSvc;
         this.summaryDao = summaryDao;
-       
+        this.rateSvc = rateSvc;
 
     }
 
     @PostMapping
     public ExpenseDto create(
-        @RequestHeader("User-Id") Long uid,
+        @RequestHeader(Constants.HEADER_USER_ID) Long uid,
         @Valid @RequestBody ExpenseDto dto
     ) throws JsonProcessingException {
-        User u = userSvc.findById(uid).orElseThrow();
+        User u = userSvc.findByIdOrThrow(uid);
         Expense e = dto.toEntity();
         e.setUser(u);
         Expense saved = expSvc.create(e);
 
-        
         return ExpenseDto.fromEntity(saved);
     }
 
 
     @GetMapping
     public Page<ExpenseDto> list(
-        @RequestHeader("User-Id") Long uid,
+        @RequestHeader(Constants.HEADER_USER_ID) Long uid,
         @RequestParam(required=false) String category,
-        @RequestParam @DateTimeFormat(iso=DateTimeFormat.ISO.DATE) LocalDate start,
-        @RequestParam @DateTimeFormat(iso=DateTimeFormat.ISO.DATE) LocalDate end,
+        @RequestParam(required=false) @DateTimeFormat(iso=DateTimeFormat.ISO.DATE) LocalDate start,
+        @RequestParam(required=false) @DateTimeFormat(iso=DateTimeFormat.ISO.DATE) LocalDate end,
         Pageable pg
     ) {
-        if (start == null) {
-        start = LocalDate.of(1970, 1, 1);
-        }
-        if (end == null) {
-            end = LocalDate.now();
-        }
-        User u = userSvc.findById(uid).orElseThrow();
+        User u = userSvc.findByIdOrThrow(uid);
         return expSvc.list(u, category, start, end, pg)
             .map(ExpenseDto::fromEntity);
     }
+
+     // ——— Currency convert to all for monthly budget ———
+
+    public static class ConvertPayload {
+        public String fromCurrency;
+        public String toCurrency;
+    }
+
+    
+    @PutMapping(Constants.CONVERT)
+    public UserDto convertAllExpenses(
+        @RequestHeader(Constants.HEADER_USER_ID) Long uid,
+        @RequestBody ConvertPayload payload
+    ) {
+        User u = userSvc.findByIdOrThrow(uid);
+
+        BigDecimal rate = rateSvc.getRate(payload.fromCurrency, payload.toCurrency);
+
+        List<Expense> all = expSvc
+            .list(u, null, LocalDate.of(1970,1,1), LocalDate.now(), Pageable.unpaged())
+            .getContent();
+
+        all.forEach(exp -> {
+            exp.setAmount(exp.getAmount().multiply(rate));
+            expSvc.update(exp);
+        });
+
+        BigDecimal newBudget = u.getMonthlyBudget().multiply(rate);
+        User updatedUser = userSvc.updateProfile(uid, u.getEmail(), newBudget);
+
+        return UserDto.from(updatedUser);
+    }
+
+
 
     @GetMapping("/{id}")
     public ExpenseDto getOne(@PathVariable Long id) {
@@ -121,9 +150,12 @@ public class ExpenseController {
         expSvc.delete(id);
     }
 
-    @GetMapping("/stats/summary")
+
+   
+
+    @GetMapping(Constants.STATS_SUMMARY)
     public Map<String,Object> getSummary(
-        @RequestHeader("User-Id") Long uid,
+        @RequestHeader(Constants.HEADER_USER_ID) Long uid,
         @RequestParam @DateTimeFormat(iso=DateTimeFormat.ISO.DATE) LocalDate start,
         @RequestParam @DateTimeFormat(iso=DateTimeFormat.ISO.DATE) LocalDate end
     ) throws JsonProcessingException{
@@ -136,8 +168,6 @@ public class ExpenseController {
             "expenseCount", count,
             "averageSpent", avg
         );
-
-
         
         return summary;
     }
@@ -145,28 +175,28 @@ public class ExpenseController {
 
 
     // controller for donut data
-    @GetMapping("/stats/category")
+    @GetMapping(Constants.STATS_CATEGORY)
     public Map<String, BigDecimal> getCategoryBreakdown(
-        @RequestHeader("User-Id") Long uid,
+        @RequestHeader(Constants.HEADER_USER_ID) Long uid,
         @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate start,
         @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate end
     ) {
-        User user = userSvc.findById(uid)
-                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+        User user = userSvc.findByIdOrThrow(uid);
+    
         return expSvc.getSpendByCategory(user, start, end);
     }
 
 
     // For Horizontal Bar Chart
-    @GetMapping("/stats/top")
+    @GetMapping(Constants.STATS_TOP)
     public List<ExpenseDto> getTopExpenses(
-        @RequestHeader("User-Id") Long uid,
+        @RequestHeader(Constants.HEADER_USER_ID) Long uid,
         @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate start,
         @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate end,
         @RequestParam int n
     ) {
-        User user = userSvc.findById(uid)
-            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+        User user = userSvc.findByIdOrThrow(uid);
+            
         return expSvc.findTopByAmount(user, start, end, n)
                      .stream()
                      .map(ExpenseDto::fromEntity)
@@ -174,23 +204,24 @@ public class ExpenseController {
     }
 
 
-    @GetMapping("/stats/timeseries")
+    // for line graph
+    @GetMapping(Constants.STATS_TIMESERIES)
     public List<TimeSeriesPoint> getTimeSeries(
-        @RequestHeader("User-Id") Long uid,
+        @RequestHeader(Constants.HEADER_USER_ID) Long uid,
         @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate start,
         @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate end,
         @RequestParam String interval  // "day", "week", or "month"
     ) {
-        User user = userSvc.findById(uid)
-            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+        User user = userSvc.findByIdOrThrow(uid);
+
         return expSvc.getTimeSeries(user, start, end, interval);
     }
 
 
 
-    @GetMapping("/export")
+    @GetMapping(Constants.EXPORT)
     public void exportCsv(
-        @RequestHeader("User-Id") Long uid,
+        @RequestHeader(Constants.HEADER_USER_ID) Long uid,
 
         @RequestParam(
         name = "start",
@@ -201,7 +232,7 @@ public class ExpenseController {
 
         @RequestParam(
         name = "end",
-        defaultValue = "#{T(java.time.LocalDate).now().toString()}"
+        defaultValue = "#{T(LocalDate).now().toString()}"
         )
         @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
         LocalDate end,
@@ -216,20 +247,17 @@ public class ExpenseController {
     ) throws Exception {
        
 
-        resp.setContentType("text/csv");
+        resp.setContentType(Constants.CSV_CONTENT_TYPE);
         resp.setHeader(
         HttpHeaders.CONTENT_DISPOSITION,
-        "attachment; filename=expenses.csv"
+        Constants.CSV_DISPOSITION
         );
 
         try (PrintWriter pw = resp.getWriter()) {
             pw.println("Title,Amount,Category,Date,Tags,Note");
 
             expSvc.list(
-                userSvc.findById(uid)
-                    .orElseThrow(() -> 
-                        new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found")
-                    ),
+                userSvc.findByIdOrThrow(uid),
                 category.isBlank() ? null : category,
                 start,
                 end,
@@ -247,7 +275,5 @@ public class ExpenseController {
             ));
         }
     }
-
-
 
 }
