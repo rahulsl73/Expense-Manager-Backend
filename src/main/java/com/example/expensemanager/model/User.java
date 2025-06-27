@@ -41,7 +41,7 @@ public class User {
     @JsonManagedReference
     private List<Expense>expenses;
 
-    @Column(nullable = false, length = 64)
-    private String jwtSecret;
+    // @Column(nullable = false, length = 64)
+    // private String jwtSecret;
 
 }

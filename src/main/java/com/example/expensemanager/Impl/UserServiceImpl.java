@@ -37,9 +37,9 @@ public class UserServiceImpl implements UserService {
     public User register(User u) {
         try{
             u.setPassword(encoder.encode(u.getPassword()));
-            byte[] keyBytes = new byte[32];
-            SECURE_RANDOM.nextBytes(keyBytes);
-            u.setJwtSecret(HEX_FORMAT.formatHex(keyBytes));
+            // byte[] keyBytes = new byte[32];
+            // SECURE_RANDOM.nextBytes(keyBytes);
+            // u.setJwtSecret(HEX_FORMAT.formatHex(keyBytes));
             return repo.save(u);
         }catch(DataIntegrityViolationException ex){
             String msg = ex.getMostSpecificCause().getMessage().toLowerCase();
@@ -54,8 +54,6 @@ public class UserServiceImpl implements UserService {
         }
         
     }
-
-    
 
     @Override
     @Transactional(readOnly = true)
