@@ -20,7 +20,7 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 public class SecurityConfig {
 
     @Bean
-    public SecurityFilterChain filterChain(HttpSecurity http, JwtFilter jwtFilter) throws Exception {
+    public SecurityFilterChain filterChain(HttpSecurity http, JwtCookieFilter jwtFilter) throws Exception {
         http
             .csrf(csrf -> csrf.disable())
             .cors(withDefaults())
@@ -29,7 +29,6 @@ public class SecurityConfig {
                 .requestMatchers(
                     "/auth/**", "/error", "/v3/api-docs/**", "/swagger-ui/**"
                 ).permitAll()
-
                 .anyRequest().authenticated()
             )
             .sessionManagement(sess -> sess.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
@@ -49,7 +48,11 @@ public class SecurityConfig {
     }
 
     @Bean
-    public JwtFilter jwtFilter(JwtUtil jwtUtil, UserDetailsService uds) {
-        return new JwtFilter(jwtUtil, uds);
-    }    
+    public JwtCookieFilter jwtCookieFilter(
+            JwtUtil jwtUtil, 
+            UserDetailsService uds
+    ) {
+        return new JwtCookieFilter(jwtUtil, uds);
+    }
+
 }

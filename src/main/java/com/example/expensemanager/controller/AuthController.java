@@ -11,6 +11,7 @@ import com.example.expensemanager.dto.SignupRequest;
 import com.example.expensemanager.dto.UserDto;
 import com.example.expensemanager.service.AuthService;
 
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 
 
@@ -30,7 +31,7 @@ public class AuthController {
     }
 
     @PostMapping(Constants.LOGIN)
-    public AuthResponse login(@Valid @RequestBody AuthRequest req) {
-        return authSvc.login(req);
+    public AuthResponse login(HttpServletResponse response,@Valid @RequestBody AuthRequest req) {
+        return authSvc.login(response,req);
     }
 }

@@ -1,4 +1,3 @@
-// AuthRequest.java
 package com.example.expensemanager.dto;
 
 import jakarta.validation.constraints.NotBlank;

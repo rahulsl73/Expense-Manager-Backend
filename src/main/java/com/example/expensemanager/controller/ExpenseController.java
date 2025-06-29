@@ -153,7 +153,6 @@ public class ExpenseController {
 
     @GetMapping(Constants.STATS_SUMMARY)
     public Map<String,Object> getSummary(
-        // @RequestHeader(Constants.HEADER_USER_ID) Long uid,
         @PathVariable Long userId,
         @RequestParam @DateTimeFormat(iso=DateTimeFormat.ISO.DATE) LocalDate start,
         @RequestParam @DateTimeFormat(iso=DateTimeFormat.ISO.DATE) LocalDate end

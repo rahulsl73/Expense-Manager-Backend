@@ -1,4 +1,3 @@
-// AuthResponse.java
 package com.example.expensemanager.dto;
 
 import lombok.AllArgsConstructor;
@@ -12,7 +11,6 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @Builder
 public class AuthResponse {
-    private String token;
     private Long userId;
     private String email;
 }

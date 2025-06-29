@@ -2,12 +2,15 @@ package com.example.expensemanager.Impl;
 
 
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.ResponseCookie;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.example.expensemanager.constant.Constants;
 import com.example.expensemanager.dto.AuthRequest;
 import com.example.expensemanager.dto.AuthResponse;
 import com.example.expensemanager.dto.SignupRequest;
@@ -19,6 +22,8 @@ import com.example.expensemanager.model.User;
 import com.example.expensemanager.security.JwtUtil;
 import com.example.expensemanager.service.AuthService;
 import com.example.expensemanager.service.UserService;
+
+import jakarta.servlet.http.HttpServletResponse;
 
 @Service
 public class AuthServiceImpl implements AuthService {
@@ -60,7 +65,7 @@ public class AuthServiceImpl implements AuthService {
     }
 
     @Override
-    public AuthResponse login(AuthRequest req) {
+    public AuthResponse login(HttpServletResponse response,AuthRequest req) {
         try {
             authManager.authenticate(
                 new UsernamePasswordAuthenticationToken(
@@ -79,6 +84,16 @@ public class AuthServiceImpl implements AuthService {
             );
 
         String token = jwtUtil.generateToken(req.getUsername());
-        return new AuthResponse(token, user.getId(), user.getEmail());
+
+        ResponseCookie cookie = ResponseCookie.from(Constants.COOKIE_NAME,token)
+                                .httpOnly(true)
+                                .secure(false) // for dev false for prod true
+                                .path("/")
+                                .maxAge(Constants.COOKIE_MAX_AGE)
+                                .sameSite("Lax") // for dev None and for prod Strict
+                                .build();
+        
+        response.addHeader(HttpHeaders.SET_COOKIE,cookie.toString());
+        return new AuthResponse(user.getId(), user.getEmail());
     }
 }

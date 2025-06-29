@@ -26,4 +26,8 @@ public class Constants {
     public static final String ERR_USER_NOT_FOUND = "User not found";
 
     public static final String DATE_PATTERN_ISO = "yyyy-MM-dd";
+
+
+    public static final String COOKIE_NAME    = "X-Auth-Token";
+    public static final long   COOKIE_MAX_AGE = 60 * 60 * 24; 
 }
