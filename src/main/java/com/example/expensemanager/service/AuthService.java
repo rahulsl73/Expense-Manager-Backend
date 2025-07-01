@@ -1,0 +1,15 @@
+package com.example.expensemanager.service;
+
+import com.example.expensemanager.dto.AuthRequest;
+import com.example.expensemanager.dto.AuthResponse;
+import com.example.expensemanager.dto.SignupRequest;
+import com.example.expensemanager.dto.UserDto;
+
+import jakarta.servlet.http.HttpServletResponse;
+
+public interface AuthService {
+    
+    UserDto signup(SignupRequest req);
+
+    AuthResponse login(HttpServletResponse response,AuthRequest req);
+}
